@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
+        body {
+            background-color: #dfdfdf;
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        div#timer{
+            background-image: linear-gradient(to bottom, #0af, rgb(0, 127, 190));
+            padding: 40px 20px 20px 20px;
+            text-align: center;
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 100;
+            font-size: 40px;
+            box-shadow: 0px 3px 10px black;
+        }
+        button{
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 17px;
+        }
+        button#starter{
+            appearance: none;
+            background-color: rgb(214, 254, 255);
+            border-radius: 10px;
+            width: 50%;
+            padding: 5px 5%;
+        }
+        div#range{
+            display: none;
+            grid-template-rows: auto auto;
+            grid-template-columns: auto auto;
+            background-color: #00aaff30;
+            width: 100%;
+            padding: 20px 0;
+            justify-content: center;
+            gap: 20px;
+            text-align: right;
+            margin: 0 auto;
+        }
+        div#range>div{
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            column-gap: 20px;
+            padding: 10px 0;
+        }
+        span#from{
+            font-family: 'Roboto Mono', monospace;
+        }
+        span#upto{
+            font-family: 'Roboto Mono', monospace;
+        }
+        div.question{
+            font-family: 'Roboto Mono', monospace;
+            font-weight: bold;
+            padding: 25px 0;
+            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: row;
+            gap: 2%;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 2px solid grey;
+        }
+        div.question>button{
+            background-color: cadetblue;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        div.question>input{
+            padding: 10px;
+            border: none;
+        }
+        div.question>input:focus{
+            background-color: rgb(212, 243, 212);
+            border: none;
+        }
+        div.question>input:disabled{
+            background-color: rgb(175, 175, 175);
+            color: white;
+        }
+        div.correct-answer{
+            background-color: rgba(124, 248, 0, 0.3);
+        }
+        div.incorrect-answer{
+            background-color: rgba(255, 0, 0, 0.3);
+        }
+        div#score-board{
+            margin: 20px 0;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="timer">
+        <span id="min" onclick="activateSecond();">00</span>:<span id="sec">00</span>:<span id="csec">00</span>
+        <div>
+            <button id="starter" onclick="startTimer();">Start</button>
+        </div>
+    </div>
+    <div id="range">
+        <label for="from-setter">From: </label>
+        <span>
+        <input oninput="updateFrom();" type="range" name="from-set" id="from-setter" min="1" max="9" value="1">
+            <span id="from">1</span>
+        </span>
+        <label for="range-setter">To: </label>
+        <span>
+        <input oninput="updateUpto();" type="range" name="ranger" id="range-setter" min="1" max="9" value="9">
+            <span id="upto">9</span>
+        </span>
+    </div>
+    <script>
+        // Constant denoting the total number of questions
+        const numOfQuestions = 20;
+
+        let from = 1;  // units place from
+        let upto = 9;  // units place up to
+        let timer_int;  // used as the interval handle for the timer
+
+        // Minutes, seconds and centiseconds <span> elements
+        let min_s = document.getElementById("min");
+        let sec_s = document.getElementById("sec");
+        let csec_s = document.getElementById("csec");
+        
+        // Variables holding the minutes, seconds and centiseconds values
+        let min = 0;
+        let sec = 0;
+        let csec = 0;
+
+        // Informs whether the start button has been pressed or not
+        let not_pressed = 1;
+        let answered = 0;  // number of questions answered
+        let score = 0;     // count of correct answers
+
+        const total_score = numOfQuestions;
+
+        // Functions for running the timer
+        const update_min = () => {
+            min += 1;
+            min_s.innerHTML = String(min).padStart(2, '0');
+        }
+        const update_sec = () => {
+            if (sec == 59){
+                update_min();
+                sec = 0;
+            } else {
+                sec += 1;
+            }
+            sec_s.innerHTML = String(sec).padStart(2, '0');
+        }
+        const update_csec = () => {
+            if (csec == 99){
+                update_sec();
+                csec = 0;
+            } else {
+                csec += 1;
+            }
+            csec_s.innerHTML = String(csec).padStart(2, '0');
+        }
+        const startTimer = () => {
+            document.getElementById('starter').setAttribute('disabled', 'disabled');
+            document.getElementById('range-setter').setAttribute('disabled', 'disabled');
+            document.getElementById('from-setter').setAttribute('disabled', 'disabled');
+            timer_int = setInterval(update_csec, 10);
+            if (from > upto){
+                [from, upto] = [upto, from];
+            }
+            createQuestions();
+            not_pressed = 0;
+        }
+        
+        /**
+         * Functions for the hidden range sliders.
+         * Clicking/Tapping on the minutes calls activateSecond()
+         * which adds an event listener to the seconds.
+         * Clicking/Tapping seconds thereafter calls activateCsec()
+         * which adds an event listener to the centiseconds.
+         * Clicking/Tapping centiseconds thereafter reveals the
+         * from-to range sliders which can be used to set the range
+         * of values that appear as operands in the problems.
+        */
+        const activateRange = () => {
+            document.getElementById('range').style.display = 'grid';
+        }
+        const activateCsec = () => {
+            csec_s.setAttribute('onclick', 'activateRange();');
+        }
+        const activateSecond = () => {
+            if (not_pressed){
+                sec_s.setAttribute('onclick', 'activateCsec();');
+            }
+        }
+        
+        // Functions to update from and upto range variables
+        const updateFrom = () => {
+            from = Number(document.getElementById('from-setter').value);
+            document.getElementById('from').innerHTML = from;
+        }
+        const updateUpto = () => {
+            upto = Number(document.getElementById('range-setter').value);
+            document.getElementById('upto').innerHTML = upto;
+        }
+
+        // Utility function to get random integers in the range [from, t], both included.
+        const randint = (from, to) => {
+            return Math.round(from + (to - from)*Math.random());
+        }
+
+        // Returns (from, to) of the form X1 and X9 (both the operands are picked from the range [X1, X9])
+        const getFromTo = () => {
+            let tens = 10 * randint(from, upto);
+            return [tens + 1, tens + 9];
+        }
+
+        // Functions to create the constituent elements of each question <div>
+        
+        // Left and right operand
+        const createOperands = (from, to) => {
+            let l = document.createElement('span');
+            let r = document.createElement('spam');
+            l.innerHTML = randint(from, to);
+            r.innerHTML = randint(from, to);
+            return [l, r];
+        }
+        // Operator <span> element
+        const createOp = () => {
+            let o = document.createElement('span');
+            o.innerHTML = 'x';
+            return o;
+        }
+        // Number input box for response
+        const createResponse = (i) => {
+            let response = document.createElement('input');
+            response.setAttribute('type', 'number');
+            response.setAttribute('id', `question${i + 1}`);
+            return response;
+        }
+        // Submit button
+        const createButton = (i) => {
+            let btn = document.createElement('button');
+            btn.setAttribute('onclick', `submitAnswer(${i + 1});`);
+            btn.setAttribute('id', `button${i + 1}`);
+            btn.innerText = 'Submit';
+            return btn;
+        }
+        // <span> containing equals sign
+        const createTxt = () => {
+            let txt = document.createElement('span');
+            txt.innerHTML = '=';
+            return txt;
+        }
+
+        // Creates and returns the question <div> element to hold all the
+        // problem components
+        const createDiv = (objects) => {
+            let div = document.createElement('div');
+            div.setAttribute('class', 'question');
+            objects.forEach((obj) => {
+                div.appendChild(obj);
+            });
+            return div;
+        }
+
+        // Creates and adds question <div> elements to the body
+        const createQuestions = () => {
+            let div, left_op, operator, right_op, response, btn, txt;
+            let tens, from, to;
+            for (let i = 0; i < numOfQuestions; ++i){
+                [from, to] = getFromTo();
+                [left_op, right_op] = createOperands(from, to);
+                operator = createOp();
+                response = createResponse(i);
+                btn = createButton(i);
+                txt = createTxt();
+                div = createDiv([left_op, operator, right_op, txt, response, btn]);
+                document.body.appendChild(div);
+            }
+        }
+
+        // Called when an answer is submitted. Deactivates the box and button
+        const submitAnswer = (id) =>{
+            let box = document.getElementById(`question${id}`);
+            // Safety to prevent deactivating the input box without any answer
+            if (box.value != ''){
+                box.setAttribute('disabled', 'disabled');
+                document.getElementById(`button${id}`).setAttribute('disabled', 'disabled');
+                answered += 1;
+                if (answered == numOfQuestions){
+                    clearInterval(timer_int);
+                    checkAnswers();
+                }
+            }
+        }
+
+        // Validates the answers, calculates the score and percentage and
+        // time then displays all the information at the bottom of the screen
+        const checkAnswers = () =>{
+            let question_divs = document.querySelectorAll("div.question");
+            question_divs.forEach((e) => {
+                let x = Number(e.childNodes[0].innerHTML);
+                let y = Number(e.childNodes[2].innerHTML);
+                let ans = Number(e.childNodes[4].value);
+                if (x * y == ans){
+                    ++score;
+                    e.setAttribute('class', 'question correct-answer');
+                } else {
+                    e.setAttribute('class', 'question incorrect-answer');
+                }
+            })
+            let score_board = document.createElement("div");
+            let percentage = (100 * score/numOfQuestions).toFixed(2);
+            score_board.setAttribute('id', 'score-board')
+            score_board.innerHTML = `For the range of values from ${from * 10} to ${10 * (upto + 1)}<br><br>
+             You scored: <b>${score} / ${numOfQuestions}</b> <br><br>
+             You answered <b><u>${percentage}%</u></b> of the questions correctly. <br><br>
+             Time taken: <b>${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}:${String(csec).padStart(2, '0')}</b>`
+            document.body.appendChild(score_board);
+        }
+    </script>
+</body>
+</html>
